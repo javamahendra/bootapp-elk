@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: bff-service
+
+  data:
+    mongodb:
+      #uri: mongodb://localhost:27017/FLNR12P
+      uri: mongodb://host.docker.internal:27017/FLNR12P
+      #uri: mongodb://admin:admin@host.docker.internal:27017/FLNR12P
+      #uri: mongodb+srv://mongouser:UnNSHp30hNt3fytc@cluster0.efc34j4.mongodb.net/FLNR12P?appName=Cluster0
+
+server:
+  port: 9099
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  health:
+    readiness-state:
+      enabled: true
+    liveness-state:
+      enabled: true
+  endpoint:
+    shutdown:
+      access: unrestricted
+    health:
+      probes:
+        enabled: true
+  info:
+    env:
+      enabled: true
+  metrics:
+    tags:
+      application: '${spring.application.name}'
+
+#logging:
+#  level:
+#    ROOT: INFO
+#  pattern:
+#    #console: '%d{yyyy-MM-dd HH:mm:ss.SSS}  %-5p [${spring.application.name},%mdc{traceId:traceId},%mdc{spanId:spanId},%mdc{internalId:orderId}]  ${PID} --- [%8.15t] %-40.40logger{0} : %m%n'
+#  file:
+#    path: logs
+
+
+

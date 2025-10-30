@@ -1,0 +1,19 @@
+filebeat.inputs:
+  - type: filestream
+    id: my-container-logs
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    parser:
+      - docker
+output.logstash:
+  hosts: ["logstash:5044"]
+  username: "${ELASTIC_USER}"
+  password: "${FILEBEAT_PASSWORD}"
+setup.kibana:
+  host: "kibana:5601"
+  username: "${ELASTIC_USER}"
+  password: "${FILEBEAT_PASSWORD}"
+# Optional for debugging
+logging.level: info
+logging.to_files: false

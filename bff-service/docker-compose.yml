@@ -1,0 +1,104 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.0.2
+    container_name: elasticsearch
+    environment:
+      - node.name=elasticsearch
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: [
+        "CMD-SHELL",
+        "curl -u ${ELASTIC_USER}:${ELASTIC_PASSWORD} -f http://localhost:9200/_cluster/health"
+      ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - esdata:/usr/share/elasticsearch/data
+    networks:
+      - elk
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.0.2
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=${ELASTIC_USER}
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - elk
+  logstash:
+    image: docker.elastic.co/logstash/logstash:9.0.2
+    container_name: logstash
+    environment:
+      - xpack.monitoring.enabled=true
+      - ELASTIC_USERNAME=${ELASTIC_USER}
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+    ports:
+      - "5044:5044"
+    volumes:
+      - ./logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ./logs:/usr/share/logstash/bff-logs   # 👈 mount Java logs
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - elk
+
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: FLNAR12P
+    volumes:
+      - mongodb-data:/data/db
+    #restart: unless-stopped
+    networks:
+      - elk
+
+  bff-service:
+    container_name: bff-service
+    build: .
+    image: "javamahendra/bff-service:s1"
+    ports:
+      - "9099:9099"
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - logstash
+      - mongodb
+    healthcheck:
+      test: "curl --fail --silent localhost:9099/actuator/health/readiness | grep UP || exit 1"
+      interval: 20s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    environment:
+      - SPRING_APPLICATION_NAME=bff-service
+    networks:
+      - elk
+
+volumes:
+  esdata:
+    driver: local
+  logs:
+    driver: local
+  mongodb-data:
+      driver: local
+
+
+networks:
+  elk:
+    driver: bridge
+
+
